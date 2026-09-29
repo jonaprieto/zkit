@@ -1,0 +1,44 @@
+# _zkit_git ENTRY...: for each git repo among ENTRY, set the
+# global _zkit_gi[ENTRY] to three lines:
+#
+#   branch (or short SHA when detached)
+#   `git describe --tags --long`
+#   `git rev-list --left-right --count @{u}...HEAD`
+#   (behind ahead, as of the last fetch)
+#
+# Local refs only, no network. All repos in parallel.
+
+emulate -L zsh
+setopt nomonitor nobgnice
+typeset -gA _zkit_gi
+_zkit_gi=()
+local f tmp i=0
+local -a repos
+
+for f; do
+  [[ -e $f/.git ]] && repos+=($f)
+done
+(( $#repos )) || return 0
+tmp=$(mktemp -d 2>/dev/null) || return 0
+
+for f in $repos; do
+  (( ++i ))
+  {
+    print -r -- "$(
+      git -C $f symbolic-ref --short -q HEAD ||
+        git -C $f rev-parse --short HEAD
+    )"
+    print -r -- "$(git -C $f describe --tags --long)"
+    print -r -- "$(
+      git -C $f rev-list --left-right --count @{u}...HEAD
+    )"
+  } >$tmp/$i 2>/dev/null &
+done
+wait
+
+i=0
+for f in $repos; do
+  (( ++i ))
+  _zkit_gi[$f]=$(<$tmp/$i)
+done
+command rm -rf $tmp

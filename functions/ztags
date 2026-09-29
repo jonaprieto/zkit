@@ -1,0 +1,103 @@
+# ztags N [N...|--all] [-a]
+#
+# Fetch tags, then list each numbered repo's tags newest first
+# with their dates (10, or all with -a). Each tag names up to 3
+# branches containing it, main/master first. The tag at HEAD
+# is marked; tags not reachable from HEAD are dimmed.
+
+emulate -L zsh
+setopt nomonitor nobgnice
+local r n h t d c w bl col mk all=0 fmt
+local dim= ylw= grn= blu= rst=
+local -a bs ml merged rows
+
+if [[ $1 == (--|)all ]] && ! _zkit_nums "$@"; then
+  print -u2 "ztags: no git repos in the last zls"
+  return 1
+fi
+if ! _zkit_nums "$@"; then
+  print -u2 -r -- "ztags: which repos? Use the numbers from zls:
+  zls           numbered listing of this dir
+  ztags 1 3     tags of entries 1 and 3
+  ztags --all   every repo from the last zls
+  add -a to show all tags instead of the 10 newest"
+  return 1
+fi
+shift $_zkit_nargs
+[[ $1 == -a ]] && all=1
+
+if [[ -t 1 ]]; then
+  dim=$'\e[38;5;242m'
+  ylw=$'\e[38;5;221m'
+  grn=$'\e[38;5;114m'
+  blu=$'\e[38;5;110m'
+  rst=$'\e[0m'
+fi
+
+for n in $reply; do
+  r=$_zkit_paths[n]
+  [[ -e $r/.git ]] && git -C $r fetch -q --tags 2>/dev/null &
+done
+wait
+
+# tag, date, and the commit it points at (peeled if annotated)
+fmt='%(refname:short)%09%(creatordate:short)%09'
+fmt+='%(if)%(*objectname)%(then)%(*objectname)'
+fmt+='%(else)%(objectname)%(end)'
+
+for n in $reply; do
+  r=$_zkit_paths[n]
+  if [[ -z $r || ! -e $r/.git ]]; then
+    print -u2 "ztags: $n is not a repo"
+    continue
+  fi
+  print -r -- "$ylw${r:t}$rst"
+  h=$(git -C $r rev-parse HEAD)
+  merged=(${(f)"$(git -C $r tag --merged HEAD)"})
+  rows=(${(f)"$(
+    git -C $r for-each-ref --sort=-creatordate \
+      --format=$fmt refs/tags
+  )"})
+  if (( ! $#rows )); then
+    print -r -- "  ${dim}no tags$rst"
+    continue
+  fi
+  (( all )) || rows=(${rows[1,10]})
+  # widest tag name
+  w=${#${(O@)${rows%%$'\t'*}//?/x}[1]}
+
+  for t in $rows; do
+    c=${t##*$'\t'}
+    d=${${t%$'\t'*}#*$'\t'}
+    t=${t%%$'\t'*}
+
+    # branches containing the tag, local and remote,
+    # deduplicated; mainline ones only if there are any,
+    # main/master first
+    bs=(${(f)"$(
+      git -C $r for-each-ref --contains $c \
+        --format='%(refname)' refs/heads refs/remotes
+    )"})
+    bs=(${(u)${${bs#refs/heads/}#refs/remotes/*/}})
+    bs=(${bs:#HEAD})
+    ml=(${(M)bs:#(main|master|next|dev|develop|release*)})
+    (( $#ml )) && bs=($ml)
+    bs=(${(M)bs:#(main|master)} ${bs:#(main|master)})
+    bl=${(j:, :)bs[1,3]}
+    (( $#bs > 3 )) && bl+=" +$(( $#bs - 3 ))"
+    [[ -n $bl ]] || bl="no branch"
+
+    if [[ $c == $h ]]; then
+      col=$grn
+      mk=" $grn← HEAD$rst"
+    elif (( ${merged[(Ie)$t]} )); then
+      col=
+      mk=
+    else
+      col=$dim
+      mk=
+    fi
+    printf "  %s%-*s  %s%s  %s%s%s%s\n" \
+      "$col" $w $t $d "$rst" "$blu" "$bl" "$rst" "$mk"
+  done
+done

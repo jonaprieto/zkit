@@ -103,7 +103,7 @@ for f in ${1:-.}/*(ND); do
   [[ -d $f ]] && dirs+=($f)
 done
 
-(( $+functions[_zkit_git] )) && _zkit_git $ents
+_zkit_git $ents
 _zkit_sizes $fresh $t0 $dirs
 
 for (( i = 1; i <= $#ents; i++ )); do

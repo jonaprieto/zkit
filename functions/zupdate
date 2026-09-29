@@ -1,0 +1,56 @@
+# zupdate N [N...|--all] [git pull flags]
+#
+# Pull the repos numbered by the last zls, quietly, one line
+# per repo. The default flag is --ff-only, so a diverged repo
+# fails instead of merging; flags you pass replace it. Skips
+# repos without an upstream, keeps going after a failure, and
+# exits 1 if any repo failed.
+
+emulate -L zsh
+local r n old new rc=0 msg
+local ylw= dim= red= rst=
+
+if ! _zkit_nums "$@"; then
+  msg="usage: zupdate N [N...|--all] [git pull flags]"
+  print -u2 -r -- "$msg  (N from the last zls)"
+  return 1
+fi
+shift $_zkit_nargs
+(( $# )) || set -- --ff-only
+
+if [[ -t 1 ]]; then
+  ylw=$'\e[38;5;221m'
+  dim=$'\e[38;5;242m'
+  red=$'\e[1;38;5;209m'
+  rst=$'\e[0m'
+fi
+
+for n in $reply; do
+  r=$_zkit_paths[n]
+  if [[ -z $r || ! -e $r/.git ]]; then
+    print -u2 "zupdate: $n is not a repo"
+    rc=1
+    continue
+  fi
+  if ! git -C $r rev-parse -q --verify @{u} >/dev/null; then
+    printf '%s%s%s %sno upstream, skipped%s\n' \
+      "$ylw" ${r:t} "$rst" "$dim" "$rst"
+    continue
+  fi
+  old=$(git -C $r rev-parse --short HEAD)
+  if ! git -C $r pull -q "$@" 2>/dev/null; then
+    printf '%s%s%s %sfailed%s\n' \
+      "$ylw" ${r:t} "$rst" "$red" "$rst"
+    rc=1
+    continue
+  fi
+  new=$(git -C $r rev-parse --short HEAD)
+  if [[ $old == $new ]]; then
+    printf '%s%s%s up to date\n' "$ylw" ${r:t} "$rst"
+  else
+    printf '%s%s%s %s..%s (+%s)\n' \
+      "$ylw" ${r:t} "$rst" $old $new \
+      $(git -C $r rev-list --count $old..$new)
+  fi
+done
+return rc
