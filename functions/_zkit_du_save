@@ -1,0 +1,35 @@
+# _zkit_du_save TMP START DIR...: save du results for DIR...
+# from TMP/sizes ("kb<TAB>path" lines, one per finished du)
+# into the cache and into _zkit_kb/_zkit_mark. START is when
+# measuring began. Once TMP/done exists, a DIR without a line
+# could not be read at all: saved as -2.
+
+emulate -L zsh
+local tmp=$1 now0=$2 d kb ms line
+local -A got
+local -a put
+shift 2
+
+if [[ -r $tmp/sizes ]]; then
+  for line in ${(f)"$(<$tmp/sizes)"}; do
+    got[${line#*$'\t'}]=${line%%$'\t'*}
+  done
+fi
+
+for d; do
+  if (( ${+got[$d]} )); then
+    kb=$got[$d]
+  elif [[ -e $tmp/done ]]; then
+    kb=-2
+  else
+    continue
+  fi
+  # mtime has 1s resolution: a change within a second of
+  # measuring would go unseen, so don't trust that result
+  (( ms = now0 - _zkit_mt[$d] > 1 ? now0 : 0 ))
+  put+=(${d:a} $kb $_zkit_mt[$d] $ms $now0)
+  _zkit_kb[$d]=$kb
+  _zkit_mark[$d]=
+done
+
+(( $#put )) && _zkit_cache_put $put

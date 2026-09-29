@@ -13,9 +13,8 @@ check "alphabetical with dotfiles" \
 check "numbers" "$(nums $OUT | paste -sd' ' -)" "1 2 3 4"
 check "paths recorded" "$_zkit_paths[2]" "$PWD/a"
 check "old dotdir age" "$(ages $OUT | head -1)" "5y"
-check "folders without a size show …" \
-  "$(sizes $OUT | head -3 | paste -sd' ' -)" \
-  "… … …"
+[[ $(sizes $OUT | head -3) != *[…~?]* ]]
+check "folders are measured" $? 0
 
 # sizes (-s) and ages (-t): biggest / oldest last
 mkdir $T/s

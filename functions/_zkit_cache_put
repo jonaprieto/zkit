@@ -1,0 +1,38 @@
+# _zkit_cache_put PATH KB MTIME MEASURED STARTED [...]
+#
+# Merge entries into the size cache (format: _zkit_cache_read).
+# Holds a lock while it re-reads, merges and writes, so shells
+# saving at the same time keep each other's entries. Drops
+# entries untouched for 30 days. Writes a temporary file and
+# renames it, so a reader never sees half a file. Paths with a
+# tab or newline are not cached.
+
+emulate -L zsh
+zmodload zsh/datetime zsh/system
+local f=${XDG_CACHE_HOME:-$HOME/.cache}/zkit/du
+local p kb mt ms st fd
+local -a e
+mkdir -p ${f:h} || return 1
+
+# no lock within 5s: skip this save, the next zls redoes it.
+# zsystem flock needs the lock file to exist.
+: >>| $f.lock
+zsystem flock -t 5 -f fd $f.lock 2>/dev/null || return 1
+{
+  _zkit_cache_read
+  for p kb mt ms st; do
+    [[ $p == *[$'\t\n']* ]] && continue
+    _zkit_cache[$p]="$kb $mt $ms $st"
+  done
+  {
+    for p in ${(k)_zkit_cache}; do
+      e=(${=_zkit_cache[$p]})
+      (( EPOCHSECONDS - (e[3] > e[4] ? e[3] : e[4]) \
+         < 2592000 )) || continue
+      print -r -- "$p"$'\t'${(pj:\t:)e}
+    done
+  } >| $f.$sysparams[pid] &&
+    command mv -f $f.$sysparams[pid] $f
+} always {
+  zsystem flock -u $fd
+}

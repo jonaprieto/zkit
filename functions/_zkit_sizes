@@ -1,15 +1,93 @@
 # _zkit_sizes FRESH START DIR...: folder sizes for zls.
 #
 # Sets _zkit_kb[DIR] to KB (-1 not measured yet, -2 unreadable)
-# and _zkit_mark[DIR] to '~' when the size may be outdated.
-# This version measures nothing: every folder is -1.
+# and _zkit_mark[DIR] to '~' when the size may be outdated:
+# DIR's mtime moved since it was measured, or the measurement
+# is over 1h old.
+#
+# Outdated folders are re-measured in the background, 8 du at
+# a time and at most once per 10 minutes each. This waits
+# until START+1s (FRESH=1: re-measures all and waits for all);
+# a detached follower saves late results for the next zls.
+#
+# Limit: mtime only sees direct children, so a deeper change
+# shows up after the 1h re-measure (or zls -r).
 
 emulate -L zsh
-typeset -gA _zkit_kb _zkit_mark
+setopt nomonitor nobgnice extendedglob
+zmodload -F zsh/stat b:zstat
+zmodload zsh/datetime zsh/zselect
+
+local fresh=$1 t0=$2 d tmp now0 dl
+local runs=${XDG_CACHE_HOME:-$HOME/.cache}/zkit
+local -a m e todo put
+shift 2
+typeset -gA _zkit_kb _zkit_mark _zkit_mt
 _zkit_kb=()
 _zkit_mark=()
-local d
-shift 2
+_zkit_mt=()
+_zkit_cache_read
+
 for d; do
-  _zkit_kb[$d]=-1
+  zstat -A m +mtime -- $d 2>/dev/null
+  _zkit_mt[$d]=${m[1]:-0}
+  # e: kb mtime measured_at started_at
+  e=(${=_zkit_cache[${d:a}]})
+  _zkit_kb[$d]=${e[1]:--1}
+
+  if (( ! fresh )) &&
+     [[ $e[2] == $_zkit_mt[$d] ]] &&
+     (( EPOCHSECONDS - ${e[3]:-0} < 3600 )); then
+    continue
+  fi
+
+  if [[ ! -r $d || ! -x $d ]]; then
+    _zkit_kb[$d]=-2
+    put+=(${d:a} -2 $_zkit_mt[$d] $EPOCHSECONDS $EPOCHSECONDS)
+    continue
+  fi
+
+  (( ! fresh && ${e[1]:--1} != -1 )) && _zkit_mark[$d]='~'
+  if (( ! fresh && EPOCHSECONDS - ${e[4]:-0} < 600 )); then
+    continue
+  fi
+  todo+=($d)
+  # record started_at before measuring
+  put+=(${d:a} ${e[1]:--1} ${e[2]:-0} ${e[3]:-0} $EPOCHSECONDS)
 done
+
+(( $#put )) && _zkit_cache_put $put
+(( $#todo )) || return 0
+
+# temp dirs of runs that died over an hour ago
+command rm -rf $runs/run.*(N/mh+1)
+tmp=$(mktemp -d $runs/run.XXXXXX 2>/dev/null) || return 0
+now0=$EPOCHSECONDS
+
+# One detached job. Each du appends one short "kb<TAB>path"
+# line when it finishes; then the job marks done.
+# -H: a symlinked folder counts its target.
+{
+  print -rN -- $todo |
+    xargs -0 -n1 -P8 du -skH >>$tmp/sizes 2>/dev/null
+  : >| $tmp/done
+} &!
+
+while [[ ! -e $tmp/done ]] &&
+      (( fresh || EPOCHREALTIME < t0 + 1 )); do
+  zselect -t 5
+done
+_zkit_du_save $tmp $now0 $todo
+
+if [[ -e $tmp/done ]]; then
+  command rm -rf $tmp
+  return 0
+fi
+{
+  (( dl = EPOCHREALTIME + 3600 ))
+  while [[ ! -e $tmp/done ]] && (( EPOCHREALTIME < dl )); do
+    zselect -t 100
+  done
+  _zkit_du_save $tmp $now0 $todo
+  command rm -rf $tmp
+} &!

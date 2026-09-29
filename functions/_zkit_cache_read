@@ -1,0 +1,29 @@
+# _zkit_cache_read: load the folder-size cache into the global
+# _zkit_cache[path]="kb mtime measured_at started_at".
+#
+# File: ${XDG_CACHE_HOME:-$HOME/.cache}/zkit/du, one
+# tab-separated line per folder:
+#
+#   absolute path
+#   kb           -1 not measured yet, -2 unreadable
+#   mtime        of the folder when it was measured
+#   measured_at  epoch seconds, 0 = don't trust
+#   started_at   epoch seconds of the last measure started
+#
+# Parsed, never sourced: a corrupted line is skipped and can
+# never run code.
+
+emulate -L zsh
+typeset -gA _zkit_cache
+_zkit_cache=()
+local f=${XDG_CACHE_HOME:-$HOME/.cache}/zkit/du line
+local -a r
+[[ -r $f ]] || return 0
+
+while IFS= read -r line; do
+  r=("${(@ps:\t:)line}")
+  (( $#r == 5 )) || continue
+  [[ $r[1] == /* && $r[2] == (-|)<-> ]] || continue
+  [[ $r[3] == <-> && $r[4] == <-> && $r[5] == <-> ]] || continue
+  _zkit_cache[$r[1]]="$r[2] $r[3] $r[4] $r[5]"
+done < $f
