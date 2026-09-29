@@ -1,0 +1,57 @@
+# zrm [FLAGS] N [N...]
+#
+# Remove the entries numbered by the last zls in this shell.
+# Prints their absolute paths and asks [y/N], also with -f.
+# Without FLAGS moves them to the trash with `trash`, and
+# refuses when there is no trash command; with FLAGS runs
+# `rm FLAGS -- PATHS`. Anything else (a non-number, or `--`)
+# goes to plain rm unchanged.
+
+emulate -L zsh
+local -a fl ps
+local n msg
+
+while [[ $1 == -?* && $1 != -- ]]; do
+  fl+=($1)
+  shift
+done
+if [[ $1 == -- ]] || (( ! $# )) || [[ -n ${@:#<->} ]]; then
+  command rm $fl "$@"
+  return
+fi
+
+for n; do
+  if [[ -z $_zkit_paths[n] ]] ||
+     [[ ! -e $_zkit_paths[n] && ! -L $_zkit_paths[n] ]]; then
+    print -u2 "zrm: no entry $n in the last zls"
+    return 1
+  fi
+  ps+=($_zkit_paths[n])
+done
+
+if (( ! $#fl && ! $+commands[trash] )); then
+  msg="zrm: no trash command; pass rm flags"
+  msg+=" (e.g. zrm -r N) to delete permanently"
+  print -u2 -r -- $msg
+  return 1
+fi
+
+print -rl -- "  "${^ps}
+if (( $#fl )); then
+  msg="?rm $fl ${#ps} item(s) permanently? [y/N] "
+  if ! read -q -u 0 $msg; then
+    print
+    return 1
+  fi
+  print
+  command rm $fl -- $ps
+else
+  msg="?Move ${#ps} item(s) to the trash? [y/N] "
+  if ! read -q -u 0 $msg; then
+    print
+    return 1
+  fi
+  print
+  # paths are absolute; macOS trash rejects --
+  trash $ps
+fi
