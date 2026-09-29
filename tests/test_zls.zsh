@@ -83,3 +83,19 @@ run zls -1 $T/s
 check "other flags go to eza" \
   "$RC:$(print -r -- $OUT | head -1)" \
   "0:large"
+
+# ZKIT_HIDE: matching names are left out and get no number
+mkdir -p $T/hide/.git $T/hide/node_modules $T/hide/src
+cd $T/hide
+print x > app.log
+print x > main.c
+ZKIT_HIDE=(.git node_modules '*.log')
+run zls
+check "ZKIT_HIDE hides names and globs" \
+  "$(names $OUT)" $'main.c\nsrc'
+check "hidden entries get no number" "$_zkit_paths[2]" "$PWD/src"
+
+# the fallback numbering (no zls yet) skips them too
+out=$(_zkit_paths=(); zcd 2; print -r -- $PWD)
+check "fallback numbering honors ZKIT_HIDE" "$out" "$PWD/src"
+unset ZKIT_HIDE

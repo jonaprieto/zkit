@@ -12,8 +12,11 @@
 #             (units: m h d w mo y)
 #   -r        re-measure folder sizes and wait for them
 #
+# Names matching a pattern in ZKIT_HIDE (e.g. .git .DS_Store
+# node_modules '*.log') are left out and get no number.
+#
 # -q, other flags, a file or several paths go to eza as they
-# are. The numbers feed zrm, zupdate and ztags.
+# are. The numbers feed zrm, zupdate, ztags and zcd.
 
 emulate -L zsh
 setopt extendedglob
@@ -82,6 +85,7 @@ if [[ -t 1 ]]; then
 fi
 
 for f in ${1:-.}/*(ND); do
+  [[ -n $ZKIT_HIDE && ${f:t} == (${(j:|:)~ZKIT_HIDE}) ]] && continue
   # -L: a symlink's own mtime, also when it is broken
   zstat -L -A m +mtime -- $f 2>/dev/null
 

@@ -51,4 +51,6 @@ A size marked `~` is the last known one and is being refreshed;
 
 - `ZKIT_OVERRIDE=(ls rm update tags cd)` (or `all`), set before
   sourcing, aliases the plain names to the z-commands.
+- `ZKIT_HIDE=(.git .DS_Store node_modules '*.log')` hides
+  matching names from `zls`; hidden entries get no number.
 - Sizes are cached in `${XDG_CACHE_HOME:-~/.cache}/zkit/du`.

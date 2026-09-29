@@ -1,14 +1,18 @@
 # _zkit_nums ARGS...: parse leading "N N ... | all | --all"
 # into $reply (entry numbers). $_zkit_nargs is how many args
 # were consumed. Before any zls ran in this shell, numbers the
-# current directory the way zls would.
+# current directory the way zls would, ZKIT_HIDE included.
 
 emulate -L zsh
 local n
 reply=()
 typeset -g _zkit_nargs=0
 typeset -ga _zkit_paths
-(( $#_zkit_paths )) || _zkit_paths=($PWD/*(ND:a))
+if (( ! $#_zkit_paths )); then
+  _zkit_paths=($PWD/*(ND:a))
+  [[ -n $ZKIT_HIDE ]] &&
+    _zkit_paths=(${_zkit_paths:#*/(${(j:|:)~ZKIT_HIDE})})
+fi
 
 while [[ $1 == <-> || $1 == (--|)all ]]; do
   if [[ $1 == (--|)all ]]; then
