@@ -1,0 +1,209 @@
+# zls [-r] [-s|-t|-st|-ts] [+N<u>|-N<u>|N<u>] [DIR]
+#
+# Numbered listing of DIR (default .), dotfiles included:
+# number, size, age, name.
+#
+#   -s, -t    sort by size / age, biggest or oldest last
+#             (next to the prompt); with two letters the
+#             first sorts and the second breaks ties
+#   +N<u>     only entries older than N units
+#   -N<u>, N<u>
+#             only entries newer than N units
+#             (units: m h d w mo y)
+#   -r        re-measure folder sizes and wait for them
+#
+# -q, other flags, a file or several paths go to eza as they
+# are. The numbers feed zrm, zupdate and ztags.
+
+emulate -L zsh
+setopt extendedglob
+
+if [[ $1 == -q ]]; then
+  shift
+  eza "$@"
+  return
+fi
+
+local fresh=0 by= older= newer= w msg
+local -A secs=(
+  m 60  h 3600  d 86400  w 604800
+  mo 2592000  y 31536000
+)
+while [[ $1 == -[rst]## ||
+         $1 == [+-]#<->(m|h|d|w|mo|y) ]]; do
+  if [[ $1 == -[rst]## ]]; then
+    [[ $1 == *r* ]] && fresh=1
+    by+=${${1#-}//r}
+  else
+    w=$(( ${${1#[+-]}%%[a-z]#} * secs[${1##*[0-9]}] ))
+    if [[ $1 == +* ]]; then
+      older=$w
+    else
+      newer=$w
+    fi
+  fi
+  shift
+done
+
+if [[ $# -gt 1 || $1 == -* || ( -n $1 && ! -d $1 ) ]]; then
+  if (( fresh )) || [[ -n $by$older$newer ]]; then
+    msg="zls: -r, -s, -t and age filters don't combine"
+    msg+=" with other flags or several paths"
+    print -u2 -r -- $msg
+    return 1
+  fi
+  eza "$@"
+  return
+fi
+
+zmodload -F zsh/stat b:zstat
+zmodload zsh/datetime
+
+local t0=$EPOCHREALTIME
+local f a i k kb u z n ac c b t
+local -F x
+local -a m m2 nc ents ages dirs keys lines gi ab
+local -A kv
+
+# 256 colors: sizes grey, folders bold blue, numbers yellow,
+# branch green, tag grey italic, ahead cyan, behind
+# orange-red. Ages go from bright green (minutes) to
+# orange-red (years).
+local dim= dir= grn= mag= cyn= red= ylw= rst=
+if [[ -t 1 ]]; then
+  dim=$'\e[38;5;242m'
+  dir=$'\e[1;38;5;75m'
+  grn=$'\e[38;5;114m'
+  mag=$'\e[3;38;5;246m'
+  cyn=$'\e[1;38;5;80m'
+  red=$'\e[1;38;5;209m'
+  ylw=$'\e[38;5;221m'
+  rst=$'\e[0m'
+fi
+
+for f in ${1:-.}/*(ND); do
+  # -L: a symlink's own mtime, also when it is broken
+  zstat -L -A m +mtime -- $f 2>/dev/null
+
+  # Age: newest mtime of the entry and its direct children.
+  # Limit: one level down; a deeper edit is missed.
+  a=$m[1]
+  nc=($f/*(DNom[1]))
+  if (( $#nc )); then
+    zstat -L -A m2 +mtime -- $nc 2>/dev/null
+    (( m2[1] > a )) && a=$m2[1]
+  fi
+  # future mtimes count as now
+  (( a = EPOCHSECONDS - a, a < 0 ? (a = 0) : a ))
+
+  [[ -n $older ]] && (( a <= older )) && continue
+  [[ -n $newer ]] && (( a >= newer )) && continue
+  ents+=($f)
+  ages+=($a)
+  [[ -d $f ]] && dirs+=($f)
+done
+
+(( $+functions[_zkit_git] )) && _zkit_git $ents
+_zkit_sizes $fresh $t0 $dirs
+
+for (( i = 1; i <= $#ents; i++ )); do
+  f=$ents[i]
+  a=$ages[i]
+
+  # size in KB; files count 512-byte blocks, as du does
+  if [[ -d $f ]]; then
+    kb=${_zkit_kb[$f]:--1}
+  elif zstat -A m +blocks -- $f 2>/dev/null; then
+    kb=$(( m[1] / 2 ))
+  else
+    kb=0
+  fi
+  if (( kb == -1 )); then
+    z=…
+  elif (( kb == -2 )); then
+    z='?'
+  elif (( kb == 0 )); then
+    z=0B
+  else
+    x=$kb
+    for u in K M G T; do
+      (( x < 1024 )) && break
+      (( x /= 1024 ))
+    done
+    if (( x < 10 )); then
+      printf -v z '%.1f%s' $x $u
+    else
+      printf -v z '%.0f%s' $x $u
+    fi
+  fi
+  z=${_zkit_mark[$f]}$z
+
+  keys+=($i)
+  if [[ -n $by ]]; then
+    kv=(s $(( kb < 0 ? 0 : kb )) t $a)
+    printf -v c '%015d%015d%06d' \
+      $kv[${by[1]}] $kv[${by[2]:-${by[1]}}] $i
+    keys[-1]=$c
+  fi
+
+  if (( a < 3600 )); then
+    a=$(( a / 60 ))m
+    ac=$'\e[1;38;5;120m'
+  elif (( a < 86400 )); then
+    a=$(( a / 3600 ))h
+    ac=$'\e[38;5;114m'
+  elif (( a < 2592000 )); then
+    a=$(( a / 86400 ))d
+    ac=$'\e[38;5;110m'
+  elif (( a < 31536000 )); then
+    a=$(( a / 2592000 ))mo
+    ac=$'\e[38;5;180m'
+  else
+    a=$(( a / 31536000 ))y
+    ac=$'\e[38;5;209m'
+  fi
+  [[ -n $rst ]] || ac=
+
+  n=${f:t}
+  [[ -d $f ]] && n=$dir$n$rst
+  [[ -L $f ]] && n+=" $dim→ $(zstat -L +link -- $f)$rst"
+
+  if (( ${+_zkit_gi[$f]} )); then
+    # _zkit_gi lines: branch; `describe --tags --long`
+    # (TAG-N-gSHA); `rev-list --left-right --count`
+    # (behind ahead)
+    gi=("${(@f)_zkit_gi[$f]}")
+    b=$grn$gi[1]$rst
+    t=${gi[2]%-g*}
+    if [[ -n $t ]]; then
+      if (( ${t##*-} )); then
+        t="${t%-*}$rst$ylw +${t##*-}"
+      else
+        t=${t%-*}
+      fi
+    fi
+    ab=(${=gi[3]})
+    (( ${ab[2]:-0} )) && b+=" $cyn↑${ab[2]}$rst"
+    (( ${ab[1]:-0} )) && b+=" $red↓${ab[1]}$rst"
+    n+=" $dim<$rst$b"
+    n+="${t:+$dim|$rst$mag$t$rst}"
+    n+="$dim>$rst"
+  fi
+
+  printf -v c '%s%6s %s%4s%s  %s' \
+    "$dim" $z "$ac" $a "$rst" "$n"
+  lines+=("$c")
+done
+
+# Numbers follow display order, so zrm/zupdate/ztags N act
+# on what was shown. :a keeps a symlink as the link itself:
+# zrm N must remove the link, never its target.
+typeset -ga _zkit_paths
+_zkit_paths=()
+[[ -n $by ]] && keys=(${(o)keys})
+for k in $keys; do
+  (( k = 10#${k[-6,-1]} ))
+  _zkit_paths+=(${ents[k]:a})
+  printf '%s%3s%s %s\n' \
+    "$ylw" $#_zkit_paths "$rst" "$lines[k]"
+done

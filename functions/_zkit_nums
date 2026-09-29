@@ -1,0 +1,24 @@
+# _zkit_nums ARGS...: parse leading "N N ... | all | --all"
+# into $reply (entry numbers). $_zkit_nargs is how many args
+# were consumed. Before any zls ran in this shell, numbers the
+# current directory the way zls would.
+
+emulate -L zsh
+local n
+reply=()
+typeset -g _zkit_nargs=0
+typeset -ga _zkit_paths
+(( $#_zkit_paths )) || _zkit_paths=($PWD/*(ND:a))
+
+while [[ $1 == <-> || $1 == (--|)all ]]; do
+  if [[ $1 == (--|)all ]]; then
+    for (( n = 1; n <= $#_zkit_paths; n++ )); do
+      [[ -e $_zkit_paths[n]/.git ]] && reply+=($n)
+    done
+  else
+    reply+=($1)
+  fi
+  shift
+  (( _zkit_nargs++ ))
+done
+(( $#reply ))

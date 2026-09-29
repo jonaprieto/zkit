@@ -1,0 +1,15 @@
+# _zkit_sizes FRESH START DIR...: folder sizes for zls.
+#
+# Sets _zkit_kb[DIR] to KB (-1 not measured yet, -2 unreadable)
+# and _zkit_mark[DIR] to '~' when the size may be outdated.
+# This version measures nothing: every folder is -1.
+
+emulate -L zsh
+typeset -gA _zkit_kb _zkit_mark
+_zkit_kb=()
+_zkit_mark=()
+local d
+shift 2
+for d; do
+  _zkit_kb[$d]=-1
+done
