@@ -23,6 +23,7 @@ $ zupdate 3    # git pull --ff-only in site
 
 ```sh
 brew tap jonaprieto/zkit https://github.com/jonaprieto/zkit
+brew trust --formula jonaprieto/zkit/zkit   # third-party taps need it
 brew install zkit
 echo 'source $(brew --prefix)/share/zkit/zkit.zsh' >> ~/.zshrc
 ```
