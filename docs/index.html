@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>zkit</title>
+<meta name="description" content="zsh commands built on a numbered listing: sizes, ages and git status, then act on the numbers.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0d0a;
+    --panel: #0f140f;
+    --line: #1f2a1f;
+    --fg: #c8d3c8;
+    --muted: #6c7a6c;
+    --accent: #87ff87;
+    /* zls palette (xterm-256) */
+    --c221: #ffd75f; --c242: #6c6c6c; --c75: #5fafff;
+    --c114: #87d787; --c246: #949494; --c80: #5fd7d7;
+    --c209: #ff875f; --c120: #87ff87; --c110: #87afd7;
+    --c180: #d7af87;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 15px/1.6 "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px);
+  }
+  main { max-width: 860px; margin: 0 auto; padding: 48px 16px 64px; }
+  a { color: var(--accent); text-decoration: none; border-bottom: 1px dashed currentColor; }
+  a:hover { background: var(--accent); color: var(--bg); }
+  h1, h2 { font-weight: 700; margin: 0; }
+  h1 { font-size: 44px; color: var(--accent); letter-spacing: -1px; }
+  h1 .cursor { display: inline-block; width: .55em; height: .9em; background: var(--accent);
+    vertical-align: -.05em; margin-left: 4px; animation: blink 1.1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { h1 .cursor { animation: none; } }
+  h2 { font-size: 15px; color: var(--muted); margin: 56px 0 16px; }
+  h2::before { content: "## "; color: var(--line); }
+  .tag { color: var(--muted); margin: 8px 0 0; }
+  .nav { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 8px 20px; }
+  p { margin: 0 0 14px; }
+  .term {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    margin: 20px 0;
+    overflow: hidden;
+  }
+  .term .bar { border-bottom: 1px solid var(--line); padding: 6px 12px; color: var(--muted); font-size: 12px; }
+  pre { margin: 0; padding: 14px 16px; overflow-x: auto; white-space: pre; font: inherit; font-size: 14px; }
+  .p { color: var(--accent); }        /* prompt */
+  .cm { color: var(--muted); }        /* comment */
+  .n { color: var(--c221); }          /* numbers */
+  .d { color: var(--c242); }          /* dim / sizes */
+  .dir { color: var(--c75); font-weight: 700; }
+  .br { color: var(--c114); }
+  .tg { color: var(--c246); font-style: italic; }
+  .up { color: var(--c80); font-weight: 700; }
+  .dn { color: var(--c209); font-weight: 700; }
+  .a0 { color: var(--c120); font-weight: 700; }
+  .a1 { color: var(--c110); }
+  .a2 { color: var(--c180); }
+  .a3 { color: var(--c209); }
+  .cmds { display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); }
+  .cmds > div { background: var(--bg); padding: 12px 14px; display: grid;
+    grid-template-columns: minmax(0, 17em) minmax(0, 1fr); gap: 16px; }
+  .cmds code { color: var(--accent); overflow-wrap: anywhere; }
+  .cmds .grp { background: var(--panel); color: var(--muted); display: block; padding: 6px 14px; font-size: 13px; }
+  @media (max-width: 640px) {
+    h1 { font-size: 34px; }
+    .cmds > div { grid-template-columns: 1fr; gap: 4px; }
+    pre { font-size: 12.5px; }
+  }
+  code { color: var(--accent); }
+  ul { padding-left: 0; list-style: none; margin: 0; }
+  li { padding-left: 1.6em; text-indent: -1.6em; margin-bottom: 8px; }
+  li::before { content: "> "; color: var(--muted); }
+  footer { margin-top: 72px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 16px; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>zkit<span class="cursor"></span></h1>
+<p class="tag">zsh commands built on one idea: list a folder with numbers, then act on the numbers.</p>
+<div class="nav">
+  <a href="#install">install</a>
+  <a href="#commands">commands</a>
+  <a href="#config">config</a>
+  <a href="https://github.com/jonaprieto/zkit">source</a>
+  <a href="https://github.com/jonaprieto/zkit/blob/main/CHANGELOG.md">changelog</a>
+</div>
+
+<div class="term">
+  <div class="bar">~/src</div>
+<pre><span class="p">$</span> zls
+<span class="n">  1</span> <span class="d">  4.0K</span> <span class="a3">  3y</span>  .editorconfig
+<span class="n">  2</span> <span class="d">  1.2G</span> <span class="a2"> 2mo</span>  <span class="dir">data</span>
+<span class="n">  3</span> <span class="d">   38M</span> <span class="a1">  5d</span>  <span class="dir">site</span> <span class="d">&lt;</span><span class="br">main</span> <span class="up">↑1</span><span class="d">|</span><span class="tg">v2.3.0</span><span class="n"> +4</span><span class="d">&gt;</span>
+<span class="n">  4</span> <span class="d">  ~12G</span> <span class="a0">  0m</span>  <span class="dir">videos</span>
+<span class="p">$</span> zcd 3          <span class="cm"># cd site</span>
+<span class="p">$</span> zupdate --all  <span class="cm"># git pull --ff-only in every repo listed</span>
+<span class="p">$</span> zrm 2          <span class="cm"># asks, then moves data to the trash</span></pre>
+</div>
+
+<p>Every row gets a number, a size, how long ago it changed and, for repos, the
+branch, nearest tag and ahead/behind counts. Folder sizes are cached and re-measured
+in the background, so <code>zls</code> stays instant: <code>~</code> marks a size
+being refreshed, <code>…</code> one not measured yet.</p>
+
+<h2 id="install">install</h2>
+<div class="term">
+  <div class="bar">homebrew</div>
+<pre><span class="p">$</span> brew tap jonaprieto/zkit https://github.com/jonaprieto/zkit
+<span class="p">$</span> brew trust --formula jonaprieto/zkit/zkit
+<span class="p">$</span> brew install zkit
+<span class="p">$</span> echo 'source $(brew --prefix)/share/zkit/zkit.zsh' &gt;&gt; ~/.zshrc</pre>
+</div>
+<p>Or clone the repo and <code>source path/to/zkit/zkit.zsh</code>. Needs zsh and
+<a href="https://github.com/eza-community/eza">eza</a>.</p>
+
+<h2 id="commands">commands</h2>
+<div class="cmds">
+  <span class="grp">// list</span>
+  <div><code>zls [DIR]</code><span>number, size, age and name of every entry, dotfiles included</span></div>
+  <div><code>zls -s | -t | -st</code><span>sort by size / age, biggest or oldest last; a second letter breaks ties</span></div>
+  <div><code>zls +1y | -5d</code><span>only entries older / newer than that (m h d w mo y)</span></div>
+  <div><code>zls -r</code><span>re-measure folder sizes now and wait</span></div>
+  <span class="grp">// act on the numbers</span>
+  <div><code>zcd N</code><span>cd into the numbered folder; anything else goes to plain cd</span></div>
+  <div><code>zrm [FLAGS] N...</code><span>confirm, then trash (no flags) or rm FLAGS the entries</span></div>
+  <span class="grp">// git, per numbered repo or --all</span>
+  <div><code>zupdate N...|--all</code><span>git pull --ff-only (or your flags), one line per repo</span></div>
+  <div><code>ztags N...|--all [-a]</code><span>fetch and list tags newest first, with the branches containing them</span></div>
+</div>
+<p style="margin-top:14px">Numbers always refer to the last <code>zls</code> in the current shell, in the
+order it was shown, so a sorted or filtered listing is what the next command acts on.</p>
+
+<h2 id="config">config</h2>
+<ul>
+  <li><code>ZKIT_OVERRIDE=(ls rm update tags cd)</code> or <code>all</code>, before sourcing:
+    alias the plain names to the z-commands. Interactive only, never in scripts.</li>
+  <li><code>ZKIT_HIDE=(.git .DS_Store node_modules '*.log')</code>: leave matching names
+    out of <code>zls</code>. Hidden entries get no number.</li>
+  <li>Size cache lives in <code>${XDG_CACHE_HOME:-~/.cache}/zkit/du</code>.</li>
+</ul>
+
+<footer>MIT · <a href="https://github.com/jonaprieto/zkit">github.com/jonaprieto/zkit</a></footer>
+</main>
+</body>
+</html>

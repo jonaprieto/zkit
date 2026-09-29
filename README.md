@@ -3,6 +3,7 @@
 [![CI](https://github.com/jonaprieto/zkit/actions/workflows/ci.yml/badge.svg)](https://github.com/jonaprieto/zkit/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/jonaprieto/zkit?include_prereleases)](https://github.com/jonaprieto/zkit/releases)
 [![License: MIT](https://img.shields.io/github/license/jonaprieto/zkit)](LICENSE)
+[![Site](https://img.shields.io/badge/site-zkit-87ff87)](https://jonaprieto.github.io/zkit/)
 [![Homebrew](https://img.shields.io/badge/brew-jonaprieto%2Fzkit-fbb040?logo=homebrew)](#install)
 
 zsh commands, starting with a numbered listing that shows folder
