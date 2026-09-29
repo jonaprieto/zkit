@@ -1,0 +1,14 @@
+# _zkit_repos ARGS...: _zkit_nums, but a leading "." is the git
+# repo you are in, put in $reply as its absolute path. Returns 2,
+# after saying so, when "." is used outside a repo.
+
+emulate -L zsh
+if [[ $1 != . ]]; then
+  _zkit_nums "$@"
+  return
+fi
+typeset -g _zkit_nargs=1
+reply=($(git rev-parse --show-toplevel 2>/dev/null))
+(( $#reply )) && return
+print -u2 "$funcstack[2]: not in a git repo"
+return 2

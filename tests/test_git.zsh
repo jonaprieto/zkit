@@ -53,6 +53,22 @@ check "ztags without numbers: usage, rc 1" \
   "$RC:${ERR%%$'\n'*}" \
   "1:ztags: which repos? Use the numbers from zls:"
 
+# ".": the repo you are in, from a subdirectory too
+g $T/w commit -q --allow-empty -m e
+g $T/w push -q origin main
+mkdir $T/g/behind/sub
+cd $T/g/behind/sub
+run zupdate .
+[[ $RC == 0 && $OUT == 'behind '*..*' (+1)' ]]
+check "zupdate . pulls the current repo" $? 0
+cd $T
+run zupdate .
+check "zupdate . outside a repo" "$RC:$ERR" \
+  "1:zupdate: not in a git repo"
+cd $T/g/behind/sub
+run ztags .
+check "ztags . lists the current repo" "$RC:${OUT%%$'\n'*}" "0:behind"
+
 # -a: all tags instead of the 10 newest
 git init -q -b main $T/m/many
 g $T/m/many commit -q --allow-empty -m x

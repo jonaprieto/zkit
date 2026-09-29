@@ -41,8 +41,8 @@ and [eza](https://github.com/eza-community/eza).
 | `zls +1y` / `-5d` | only entries older / newer than that (`m h d w mo y`) |
 | `zls -r` | re-measure folder sizes now and wait |
 | `zrm [FLAGS] N...` | confirm, then trash (no flags) or `rm FLAGS` the numbered entries |
-| `zupdate N...\|--all [FLAGS]` | `git pull --ff-only` (or your flags) in the numbered repos |
-| `ztags N...\|--all [-a]` | fetch and list tags, newest first, with the branches containing them |
+| `zupdate N...\|--all\|. [FLAGS]` | `git pull --ff-only` (or your flags) in the numbered repos, or `.` for the one you are in |
+| `ztags N...\|--all\|. [-a]` | fetch and list tags, newest first, with the branches containing them |
 | `zcd N` | cd into the numbered directory; anything else goes to plain `cd` |
 
 A size marked `~` is the last known one and is being refreshed;

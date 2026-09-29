@@ -1,20 +1,25 @@
-# zupdate N [N...|--all] [git pull flags]
+# zupdate N [N...|--all|.] [git pull flags]
 #
-# Pull the repos numbered by the last zls, quietly, one line
-# per repo. The default flag is --ff-only, so a diverged repo
-# fails instead of merging; flags you pass replace it. Skips
-# repos without an upstream, keeps going after a failure, and
-# exits 1 if any repo failed.
+# Pull the repos numbered by the last zls, or with "." the repo
+# you are in, quietly, one line per repo. The default flag is
+# --ff-only, so a diverged repo fails instead of merging; flags
+# you pass replace it. Skips repos without an upstream, keeps
+# going after a failure, and exits 1 if any repo failed.
 
 emulate -L zsh
 local r n old new rc=0 msg
 local ylw= dim= red= rst=
 
-if ! _zkit_nums "$@"; then
-  msg="usage: zupdate N [N...|--all] [git pull flags]"
-  print -u2 -r -- "$msg  (N from the last zls)"
-  return 1
-fi
+_zkit_repos "$@"
+case $? in
+  0) ;;
+  2) return 1 ;;
+  *)
+    msg="usage: zupdate N [N...|--all|.] [git pull flags]"
+    print -u2 -r -- "$msg  (N from the last zls)"
+    return 1
+    ;;
+esac
 shift $_zkit_nargs
 (( $# )) || set -- --ff-only
 
@@ -26,7 +31,8 @@ if [[ -t 1 ]]; then
 fi
 
 for n in $reply; do
-  r=$_zkit_paths[n]
+  r=$n
+  [[ $n == /* ]] || r=$_zkit_paths[n]
   if [[ -z $r || ! -e $r/.git ]]; then
     print -u2 "zupdate: $n is not a repo"
     rc=1

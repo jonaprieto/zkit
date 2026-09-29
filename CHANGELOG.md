@@ -8,6 +8,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `zupdate .` and `ztags .` act on the repo you are in, from
+  any of its subdirectories.
 - `zcd N` enters the numbered directory. Anything that is not a
   single number (`..`, `-`, `-2`, a path) goes to builtin `cd`
   with your own options, so `cd` can join `ZKIT_OVERRIDE`.
