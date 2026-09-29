@@ -42,12 +42,13 @@ and [eza](https://github.com/eza-community/eza).
 | `zrm [FLAGS] N...` | confirm, then trash (no flags) or `rm FLAGS` the numbered entries |
 | `zupdate N...\|--all [FLAGS]` | `git pull --ff-only` (or your flags) in the numbered repos |
 | `ztags N...\|--all [-a]` | fetch and list tags, newest first, with the branches containing them |
+| `zcd N` | cd into the numbered directory; anything else goes to plain `cd` |
 
 A size marked `~` is the last known one and is being refreshed;
 `…` means not measured yet, `?` unreadable.
 
 ## Configuration
 
-- `ZKIT_OVERRIDE=(ls rm update tags)` (or `all`), set before
+- `ZKIT_OVERRIDE=(ls rm update tags cd)` (or `all`), set before
   sourcing, aliases the plain names to the z-commands.
 - Sizes are cached in `${XDG_CACHE_HOME:-~/.cache}/zkit/du`.

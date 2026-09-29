@@ -15,9 +15,9 @@ out=$(zsh -f -c "
   ZKIT_OVERRIDE=all
   source $ZKIT/zkit.zsh
   print -r -- \$aliases[ls] \$aliases[rm] \
-    \$aliases[update] \$aliases[tags]
+    \$aliases[update] \$aliases[tags] \$aliases[cd]
 ")
-check "override all" "$out" "zls zrm zupdate ztags"
+check "override all" "$out" "zls zrm zupdate ztags zcd"
 
 out=$(zsh -f -c "
   ZKIT_OVERRIDE=(cp)

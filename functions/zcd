@@ -1,0 +1,29 @@
+# zcd N
+#
+# cd into the directory numbered by the last zls in this shell.
+# Anything else (no args, a non-number, -, --, -N, ..) goes to
+# builtin cd unchanged, so aliasing cd to zcd is safe; `zcd --
+# 3` enters a directory literally named 3. The cd itself runs
+# with the caller's options (autopushd, pushdminus, ...).
+
+local d
+() {
+  emulate -L zsh
+  [[ $# == 1 && $1 == <-> ]] || return 0
+  _zkit_nums $1
+  d=$_zkit_paths[$1]
+  if [[ -z $d ]]; then
+    print -u2 "zcd: no entry $1 in the last zls"
+    return 1
+  fi
+  if [[ ! -d $d ]]; then
+    print -u2 -r -- "zcd: not a directory: $d"
+    return 1
+  fi
+} "$@" || return
+
+if [[ -n $d ]]; then
+  builtin cd -- $d
+else
+  builtin cd "$@"
+fi
