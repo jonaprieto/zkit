@@ -1,6 +1,8 @@
 class Zkit < Formula
   desc "Numbered directory listing with sizes, ages and git status"
   homepage "https://github.com/jonaprieto/zkit"
+  url "https://github.com/jonaprieto/zkit/archive/refs/tags/v0.1.0.tar.gz"
+  sha256 "d599ffc1fd96fe4d15fbc5d0decd65acb7e5a269251f64eece64cfbbe0f61489"
   license "MIT"
   head "https://github.com/jonaprieto/zkit.git", branch: "main"
 
